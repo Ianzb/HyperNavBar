@@ -6,15 +6,13 @@ plugins {
 android {
     namespace = "com.ianzb.hypernavbar"
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+        version = release(37)
     }
 
     defaultConfig {
         applicationId = "com.ianzb.hypernavbar"
-        minSdk = 36
-        targetSdk = 36
+        minSdk = 35
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -53,4 +51,13 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    implementation(libs.miuix.core)
+    implementation(libs.miuix.ui)
+    implementation(libs.miuix.shader)
+    implementation(libs.miuix.blur)
+    implementation(libs.miuix.preference)
+    implementation(libs.miuix.icons)
+    implementation(libs.miuix.navigation)
+    implementation(libs.material.icons.extended)
 }

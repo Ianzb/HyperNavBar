@@ -10,6 +10,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.HyperNavBar">
         <activity
             android:name=".MainActivity"
@@ -23,6 +24,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".AboutActivity"
+            android:exported="false"
+            android:label="@string/about"
+            android:theme="@style/Theme.HyperNavBar" />
+        <activity
+            android:name=".LicenseActivity"
+            android:exported="false"
+            android:label="@string/third_party_licenses_title"
+            android:theme="@style/Theme.HyperNavBar" />
     </application>
 
 </manifest>
