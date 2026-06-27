@@ -66,9 +66,9 @@
     <string name="about_version">版本 %1$s</string>
     <string name="about_open_source">关于</string>
     <string name="about_source_code">项目地址</string>
-    <string name="about_source_code_summary">https://github.com/placeholder</string>
+    <string name="about_source_code_summary">https://github.com/HyperNavBar</string>
     <string name="about_telegram">Telegram 群组</string>
-    <string name="about_telegram_summary">https://t.me/placeholder</string>
+    <string name="about_telegram_summary">https://t.me/HyperNavBar</string>
     <string name="about_copyright">© 2026 Ianzb.</string>
     <string name="about_dependencies">第三方许可证</string>
     <string name="license_apache">Apache License 2.0</string>
