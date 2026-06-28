@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +62,7 @@ import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -115,8 +117,8 @@ fun RulesPageView(
     var isApplying by remember { mutableStateOf(false) }
     var updatingIds by remember { mutableStateOf(emptySet<String>()) }
     var mergedAppCount by remember { mutableIntStateOf(0) }
-    var lastApplyTime by remember { mutableStateOf(0L) }
-    var tick by remember { mutableStateOf(0) }
+    var lastApplyTime by remember { mutableLongStateOf(0L) }
+    var tick by remember { mutableIntStateOf(0) }
     var showAddSheet by remember { mutableStateOf(false) }
     var showEditSheet by remember { mutableStateOf(false) }
     var showActionsSheet by remember { mutableStateOf(false) }
@@ -133,6 +135,7 @@ fun RulesPageView(
     var noteInput by remember { mutableStateOf("") }
     var intervalInput by remember { mutableStateOf("0") }
     var showPresetSheet by remember { mutableStateOf(false) }
+    var isSaving by remember { mutableStateOf(false) }
 
     val backdrop = rememberBlurBackdrop()
     val blurActive = backdrop != null
@@ -274,60 +277,133 @@ fun RulesPageView(
     }
 
     fun addConfig() {
+        if (isSaving) return
+        isSaving = true
+
         scope.launch {
-            val jsonContent = jsonInput.trim()
-            when (ruleType) {
-                RuleType.CLOUD -> {
-                    val url = urlInput.trim()
-                    if (url.isEmpty()) return@launch
-                    RuleFetcher.fetch(RuleConfigSource(id = "", url = url, type = RuleType.CLOUD)).fold(
-                        onSuccess = { result ->
-                            val intervalMs = (intervalInput.toIntOrNull() ?: 0) * 60_000L
-                            val newConfig = RulesManager.add(context, RuleType.CLOUD, url, name = result.configName, appCount = result.appCount)
-                            RulesManager.update(context, newConfig.copy(refreshIntervalMs = intervalMs, note = noteInput.trim(), cachedContent = result.rawJson))
-                            reloadConfigs()
-                            withContext(Dispatchers.Main) { resetAddState() }
-                        },
-                        onFailure = { e ->
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(context, e.message ?: "Fetch failed", Toast.LENGTH_SHORT).show()
-                            }
+            try {
+                when (ruleType) {
+                    RuleType.CLOUD -> {
+                        val url = urlInput.trim()
+                        if (url.isEmpty()) {
+                            return@launch
                         }
-                    )
-                }
-                RuleType.LOCAL -> {
-                    if (jsonContent.isEmpty()) return@launch
-                    RuleFetcher.fetch(RuleConfigSource(id = "", jsonContent = jsonContent, type = RuleType.LOCAL)).fold(
-                        onSuccess = { result ->
-                            val intervalMs = (intervalInput.toIntOrNull() ?: 0) * 60_000L
-                            val newConfig = RulesManager.add(context, RuleType.LOCAL, "", jsonContent, result.configName, result.appCount)
-                            RulesManager.update(context, newConfig.copy(refreshIntervalMs = intervalMs, note = noteInput.trim(), cachedContent = jsonContent))
-                            reloadConfigs()
-                            withContext(Dispatchers.Main) { resetAddState() }
-                        },
-                        onFailure = { e ->
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(context, e.message ?: "Parse failed", Toast.LENGTH_SHORT).show()
-                            }
+
+                        RuleFetcher.fetch(RuleConfigSource(id = "", url = url, type = RuleType.CLOUD))
+                            .fold(
+                                onSuccess = { result ->
+                                    val intervalMs = (intervalInput.toIntOrNull() ?: 0) * 60_000L
+                                    val newConfig = RulesManager.add(
+                                        context,
+                                        RuleType.CLOUD,
+                                        url,
+                                        name = result.configName,
+                                        appCount = result.appCount
+                                    )
+                                    RulesManager.update(
+                                        context,
+                                        newConfig.copy(
+                                            refreshIntervalMs = intervalMs,
+                                            note = noteInput.trim(),
+                                            cachedContent = result.rawJson
+                                        )
+                                    )
+                                    reloadConfigs()
+                                    withContext(Dispatchers.Main) {
+                                        resetAddState()
+                                    }
+                                },
+                                onFailure = { e ->
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(
+                                            context,
+                                            "Fetch failed: ${e.message ?: "unknown error"}",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            )
+                    }
+
+                    RuleType.LOCAL -> {
+                        val jsonContent = jsonInput.trim()
+                        if (jsonContent.isEmpty()) {
+                            return@launch
                         }
-                    )
+
+                        RuleFetcher.fetch(RuleConfigSource(id = "", jsonContent = jsonContent, type = RuleType.LOCAL))
+                            .fold(
+                                onSuccess = { result ->
+                                    val intervalMs = (intervalInput.toIntOrNull() ?: 0) * 60_000L
+                                    val newConfig = RulesManager.add(
+                                        context,
+                                        RuleType.LOCAL,
+                                        "",
+                                        jsonContent,
+                                        result.configName,
+                                        result.appCount
+                                    )
+                                    RulesManager.update(
+                                        context,
+                                        newConfig.copy(
+                                            refreshIntervalMs = intervalMs,
+                                            note = noteInput.trim(),
+                                            cachedContent = jsonContent
+                                        )
+                                    )
+                                    reloadConfigs()
+                                    withContext(Dispatchers.Main) {
+                                        resetAddState()
+                                    }
+                                },
+                                onFailure = { e ->
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(
+                                            context,
+                                            "Parse failed: ${e.message ?: "unknown error"}",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            )
+                    }
                 }
+            } finally {
+                isSaving = false
             }
         }
     }
 
     fun editConfig() {
-        val dialog = editingConfig ?: return
-        val updated = dialog.copy(
-            url = urlInput.trim().ifEmpty { dialog.url },
-            jsonContent = jsonInput.trim().ifEmpty { dialog.jsonContent },
-            note = noteInput.trim(),
-            refreshIntervalMs = (intervalInput.toIntOrNull() ?: 0) * 60_000L,
-        )
-        RulesManager.update(context, updated)
-        val idx = configs.indexOfFirst { it.id == updated.id }
-        if (idx >= 0) configs[idx] = updated
-        resetEditState()
+        if (isSaving) return
+        isSaving = true
+
+        scope.launch {
+            try {
+                val dialog = editingConfig ?: return@launch
+
+                val updated = dialog.copy(
+                    url = urlInput.trim().ifEmpty { dialog.url },
+                    jsonContent = jsonInput.trim().ifEmpty { dialog.jsonContent },
+                    note = noteInput.trim(),
+                    refreshIntervalMs = (intervalInput.toIntOrNull() ?: 0) * 60_000L,
+                )
+
+                withContext(Dispatchers.IO) {
+                    RulesManager.update(context, updated)
+                }
+
+                withContext(Dispatchers.Main) {
+                    val idx = configs.indexOfFirst { it.id == updated.id }
+                    if (idx >= 0) {
+                        configs[idx] = updated
+                    }
+                    resetEditState()
+                }
+            } finally {
+                isSaving = false
+            }
+        }
     }
 
     fun deleteConfig(config: RuleConfigSource) {
@@ -438,6 +514,7 @@ fun RulesPageView(
                                 imageVector = MiuixIcons.Add,
                                 contentDescription = stringResource(R.string.rules_add),
                                 tint = MiuixTheme.colorScheme.onSurface
+
                             )
                         }
                     },
@@ -506,10 +583,20 @@ fun RulesPageView(
                 }
             },
             endAction = {
-                IconButton(onClick = { addConfig() }) {
-                    Icon(MiuixIcons.Ok, stringResource(R.string.rules_confirm), tint = MiuixTheme.colorScheme.onBackground)
+                IconButton(
+                    onClick = { addConfig() },
+                    enabled = !isSaving
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 4.dp
+                        )
+                    } else {
+                        Icon(MiuixIcons.Ok, "确定")
+                    }
                 }
-            },
+            }
         ) {
             SubscriptionForm(
                 ruleType = ruleType,
@@ -524,6 +611,7 @@ fun RulesPageView(
                 onIntervalChange = { v -> intervalInput = v.filter(Char::isDigit) },
                 jsonFilePicker = jsonFilePicker,
                 showInterval = true,
+                enabled = !isSaving,
             )
         }
 
@@ -538,8 +626,18 @@ fun RulesPageView(
                 }
             },
             endAction = {
-                IconButton(onClick = { editConfig() }) {
-                    Icon(MiuixIcons.Ok, stringResource(R.string.rules_confirm), tint = MiuixTheme.colorScheme.onBackground)
+                IconButton(
+                    onClick = { editConfig() },
+                    enabled = !isSaving
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 4.dp
+                        )
+                    } else {
+                        Icon(MiuixIcons.Ok, "确定")
+                    }
                 }
             },
         ) {
@@ -558,6 +656,7 @@ fun RulesPageView(
                     onIntervalChange = { v -> intervalInput = v.filter(Char::isDigit) },
                     jsonFilePicker = jsonFilePicker,
                     showInterval = cfg.type == RuleType.CLOUD,
+                    enabled = !isSaving,
                 )
             }
         }
@@ -735,6 +834,7 @@ private fun SubscriptionForm(
     onIntervalChange: (String) -> Unit,
     jsonFilePicker: androidx.activity.result.ActivityResultLauncher<String>,
     showInterval: Boolean,
+    enabled: Boolean = true,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxWidth().scrollEndHaptic().overScrollVertical(),
@@ -749,12 +849,14 @@ private fun SubscriptionForm(
                     onClick = { onRuleTypeChange(RuleType.CLOUD) },
                     modifier = Modifier.weight(1f),
                     colors = if (ruleType == RuleType.CLOUD) ButtonDefaults.textButtonColorsPrimary() else ButtonDefaults.textButtonColors(),
+                    enabled = enabled,
                 )
                 TextButton(
                     text = "本地",
                     onClick = { onRuleTypeChange(RuleType.LOCAL) },
                     modifier = Modifier.weight(1f),
                     colors = if (ruleType == RuleType.LOCAL) ButtonDefaults.textButtonColorsPrimary() else ButtonDefaults.textButtonColors(),
+                    enabled = enabled,
                 )
             }
         }
@@ -766,6 +868,7 @@ private fun SubscriptionForm(
                     onValueChange = onUrlChange,
                     label = stringResource(R.string.rules_add_url),
                     singleLine = true,
+                    enabled = enabled,
                 )
             } else {
                 TextField(
@@ -774,10 +877,12 @@ private fun SubscriptionForm(
                     onValueChange = onJsonChange,
                     label = "JSON 配置内容",
                     singleLine = false,
+                    enabled = enabled,
                 )
                 TextButton(
                     text = "从文件导入",
                     onClick = { jsonFilePicker.launch("application/json") },
+                    enabled = enabled,
                 )
             }
         }
@@ -788,6 +893,7 @@ private fun SubscriptionForm(
                 onValueChange = onNoteChange,
                 label = stringResource(R.string.rules_note),
                 singleLine = true,
+                enabled = enabled,
             )
         }
         if (showInterval) {
@@ -798,6 +904,7 @@ private fun SubscriptionForm(
                     onValueChange = onIntervalChange,
                     label = stringResource(R.string.rules_add_interval),
                     singleLine = true,
+                    enabled = enabled,
                 )
             }
         }
