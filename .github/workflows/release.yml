@@ -67,7 +67,9 @@ jobs:
           fi
 
       - name: 构建 Release APK (arm64-v8a)
-        run: ./gradlew assembleRelease
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
 
       - name: 重命名 APK
         run: |
