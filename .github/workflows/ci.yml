@@ -34,28 +34,30 @@ jobs:
       - name: 读取版本号
         id: get_version
         run: |
-          VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
-          VERSION_CODE=$(grep 'versionCode' app/build.gradle.kts | sed 's/.*= //')
-          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          $content = Get-Content app/build.gradle.kts -Raw
+          $versionName = [regex]::Match($content, 'versionName = "([^"]+)"').Groups[1].Value
+          $versionCode = [regex]::Match($content, 'versionCode = (\d+)').Groups[1].Value
+          Write-Output "version_name=$versionName" >> $env:GITHUB_OUTPUT
+          Write-Output "version_code=$versionCode" >> $env:GITHUB_OUTPUT
+        shell: pwsh
 
       - name: 生成 CI 版本号
         id: generate_ci_version
         run: |
-          BASE="${{ steps.get_version.outputs.version_name }}"
-          CI_VERSION="$BASE+ci$GITHUB_RUN_NUMBER"
-          echo "ci_version=$CI_VERSION" >> $GITHUB_OUTPUT
-          echo "CI Version: $CI_VERSION"
+          $base = "${{ steps.get_version.outputs.version_name }}"
+          $ciVersion = "$base+ci$env:GITHUB_RUN_NUMBER"
+          Write-Output "ci_version=$ciVersion" >> $env:GITHUB_OUTPUT
+          Write-Host "CI Version: $ciVersion"
+        shell: pwsh
 
       - name: 构建 Debug APK
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug
+        run: ./gradlew assembleDebug
 
       - name: 重命名 APK
         run: |
-          mv app/build/outputs/apk/debug/app-arm64-v8a-debug.apk \
-             ${{ env.PROGRAM_NAME }}_${{ steps.generate_ci_version.outputs.ci_version }}.apk
+          $ciVersion = "${{ steps.generate_ci_version.outputs.ci_version }}"
+          Rename-Item -Path "app/build/outputs/apk/debug/app-arm64-v8a-debug.apk" -NewName "${{ env.PROGRAM_NAME }}_$ciVersion.apk"
+        shell: pwsh
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v7
@@ -66,6 +68,7 @@ jobs:
 
       - name: 显示构建信息
         run: |
-          echo "构建完成"
-          echo "版本号: ${{ steps.generate_ci_version.outputs.ci_version }}"
-          echo "构建产物已上传至 Actions Artifacts"
+          Write-Host "构建完成"
+          Write-Host "版本号: ${{ steps.generate_ci_version.outputs.ci_version }}"
+          Write-Host "构建产物已上传至 Actions Artifacts"
+        shell: pwsh

@@ -35,44 +35,50 @@ jobs:
 
       - name: 解码签名密钥
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          $bytes = [Convert]::FromBase64String("${{ secrets.KEYSTORE_BASE64 }}")
+          [IO.File]::WriteAllBytes("release.keystore", $bytes)
+        shell: pwsh
 
       - name: 读取当前版本号
         id: get_version
         run: |
-          VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
-          VERSION_CODE=$(grep 'versionCode' app/build.gradle.kts | sed 's/.*= //')
-          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          $content = Get-Content app/build.gradle.kts -Raw
+          $versionName = [regex]::Match($content, 'versionName = "([^"]+)"').Groups[1].Value
+          $versionCode = [regex]::Match($content, 'versionCode = (\d+)').Groups[1].Value
+          Write-Output "version_name=$versionName" >> $env:GITHUB_OUTPUT
+          Write-Output "version_code=$versionCode" >> $env:GITHUB_OUTPUT
+        shell: pwsh
 
       - name: 更新版本号（如果提供）
         id: update_version
         run: |
-          INPUT_VERSION="${{ github.event.inputs.version }}"
-          CURRENT_VERSION_NAME="${{ steps.get_version.outputs.version_name }}"
-          CURRENT_VERSION_CODE="${{ steps.get_version.outputs.version_code }}"
+          $inputVersion = "${{ github.event.inputs.version }}"
+          $currentVersionName = "${{ steps.get_version.outputs.version_name }}"
+          $currentVersionCode = [int]"${{ steps.get_version.outputs.version_code }}"
           
-          if [ -z "$INPUT_VERSION" ]; then
-            echo "未指定版本号，使用当前版本号"
-            echo "final_version=$CURRENT_VERSION_NAME" >> $GITHUB_OUTPUT
-            echo "version_code=$CURRENT_VERSION_CODE" >> $GITHUB_OUTPUT
-            echo "version_changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "使用指定版本号: $INPUT_VERSION"
-            NEW_VERSION_CODE=$((CURRENT_VERSION_CODE + 1))
+          if ([string]::IsNullOrEmpty($inputVersion)) {
+            Write-Host "未指定版本号，使用当前版本号"
+            Write-Output "final_version=$currentVersionName" >> $env:GITHUB_OUTPUT
+            Write-Output "version_code=$currentVersionCode" >> $env:GITHUB_OUTPUT
+            Write-Output "version_changed=false" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "使用指定版本号: $inputVersion"
+            $newVersionCode = $currentVersionCode + 1
             
             # 更新 build.gradle.kts 中的版本号
-            sed -i "s/versionCode = $CURRENT_VERSION_CODE/versionCode = $NEW_VERSION_CODE/" app/build.gradle.kts
-            sed -i "s/versionName = \"$CURRENT_VERSION_NAME\"/versionName = \"$INPUT_VERSION\"/" app/build.gradle.kts
+            $content = Get-Content app/build.gradle.kts -Raw
+            $content = $content -replace "versionCode = $currentVersionCode", "versionCode = $newVersionCode"
+            $content = $content -replace "versionName = `"$currentVersionName`"", "versionName = `"$inputVersion`""
+            Set-Content app/build.gradle.kts $content
             
-            echo "final_version=$INPUT_VERSION" >> $GITHUB_OUTPUT
-            echo "version_code=$NEW_VERSION_CODE" >> $GITHUB_OUTPUT
-            echo "version_changed=true" >> $GITHUB_OUTPUT
-          fi
+            Write-Output "final_version=$inputVersion" >> $env:GITHUB_OUTPUT
+            Write-Output "version_code=$newVersionCode" >> $env:GITHUB_OUTPUT
+            Write-Output "version_changed=true" >> $env:GITHUB_OUTPUT
+          }
+        shell: pwsh
 
       - name: 构建 Release APK (arm64-v8a)
         run: |
-          chmod +x gradlew
           ./gradlew assembleRelease
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -80,9 +86,9 @@ jobs:
 
       - name: 重命名 APK
         run: |
-          FINAL_VERSION="${{ steps.update_version.outputs.final_version }}"
-          mv app/build/outputs/apk/release/app-arm64-v8a-release.apk \
-             ${PROGRAM_NAME}_${FINAL_VERSION}.apk
+          $finalVersion = "${{ steps.update_version.outputs.final_version }}"
+          Rename-Item -Path "app/build/outputs/apk/release/app-arm64-v8a-release.apk" -NewName "${{ env.PROGRAM_NAME }}_$finalVersion.apk"
+        shell: pwsh
 
       - name: 提交版本更新
         if: steps.update_version.outputs.version_changed == 'true'
@@ -91,16 +97,18 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           git add -u
-          if ! git diff --cached --quiet; then
+          $diff = git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
             git stash
             git pull --rebase origin main
             git stash pop
             git add -u
             git commit -m "Update version to ${{ steps.update_version.outputs.final_version }} (code ${{ steps.update_version.outputs.version_code }}) [ci skip]"
             git push origin main
-          else
-            echo "无版本变更"
-          fi
+          } else {
+            Write-Host "无版本变更"
+          }
+        shell: pwsh
 
       - name: 发布 GitHub Release
         uses: softprops/action-gh-release@v3
@@ -127,4 +135,5 @@ jobs:
           retention-days: 30
 
       - name: 显示构建信息
-        run: echo "Release ${{ steps.update_version.outputs.final_version }} 已发布"
+        run: Write-Host "Release ${{ steps.update_version.outputs.final_version }} 已发布"
+        shell: pwsh
