@@ -1,8 +1,32 @@
+<div align="center">
+
 # HyperNavBar
 
-小米 HyperOS 小白条沉浸规则管理工具 — 基于 Root 的导航栏行为自定义应用。
+### 小米 HyperOS 小白条沉浸规则管理工具
 
-## 功能
+[规则文档](docs/rule.md) | [规则仓库](https://github.com/Ianzb/HyperNavBarRules) | [Telegram 群组](https://t.me/HyperNavBar)
+
+[![GitHub License](https://img.shields.io/github/license/Ianzb/HyperNavBar)](LICENSE)
+[![GitHub Issues](https://img.shields.io/github/issues/Ianzb/HyperNavBar)](https://github.com/Ianzb/HyperNavBar/issues)
+[![GitHub PRs](https://img.shields.io/github/issues-pr/Ianzb/HyperNavBar)](https://github.com/Ianzb/HyperNavBar/pulls)
+
+</div>
+
+**HyperNavBar** 是一款小米 HyperOS 导航栏沉浸规则管理应用，通过 Root 权限自定义应用的小白条行为。
+
+规则数据由 [HyperNavBar Rules](https://github.com/Ianzb/HyperNavBarRules) 仓库维护，欢迎前往贡献。
+
+<br>
+
+# 交流 & 反馈群组
+
+[![tg_badge]][tg_url]
+
+加入群组反馈问题、了解最新动态、与其他贡献者交流。
+
+<br>
+
+# 功能
 
 - **多云订阅支持** — 添加云端 JSON 订阅源或本地 JSON，自动拉取并解析 `NBIRules`
 - **优先级合并** — 多订阅源按优先级智能合并，按包名去重
@@ -15,47 +39,23 @@
 - **中英文双语** — 支持简体中文和英文，跟随系统语言
 - **设置导入导出** — 一键备份 / 恢复全部配置
 
-## 系统要求
+<br>
+
+# 系统要求
 
 - 小米设备，已刷 **HyperOS**（2.2 / 3.0 / 3.3+）
 - **Root 权限**（Magisk / KernelSU / APatch）
 - Android 15+（minSdk 35）
 
-## 架构
+<br>
 
-```
-MainActivity (Jetpack Compose + Miuix)
-├── HorizontalPager 4 页
-│   ├── HomePage        — Root 状态、设备信息、订阅数 / 应用数
-│   ├── RulesPage       — 订阅管理、合并、应用、恢复
-│   ├── SettingsPage    — 主题、导航栏样式、语言、自启、导入导出
-│   └── AboutPage       — 版本、链接、许可证
-├── BottomNavigationBar — 标准 / 悬浮 / 液态玻璃
-└── BootReceiver        — 开机自动应用规则
-```
+# 下载
 
-### 规则处理管线
+前往 [Releases](https://github.com/Ianzb/HyperNavBar/releases) 下载最新 APK。
 
-```
-RuleConfigSource (订阅数据模型)
-  → RuleFetcher (HTTP 拉取 / 本地解析)
-  → RuleCombiner (多源按优先级合并)
-  → RuleConverter (OS 版本检测 → 格式转换)
-  → RootApplier (su 写文件 + cmd 热重载)
-```
+<br>
 
-### 关键技术栈
-
-| 层 | 技术 |
-|---|---|
-| UI | Jetpack Compose + Miuix |
-| 状态管理 | `SharedPreferences` + `remember` + `mutableStateOf` |
-| 网络 | `HttpURLConnection` |
-| Root | `su` 执行 shell 命令 |
-| 动画 | 自定义 Spring 物理 + OpenGL Fragment Shader |
-| 路由 | `HorizontalPager` + 无 ViewModel / 无 DI |
-
-## 构建
+# 构建
 
 ```bash
 # 克隆项目
@@ -69,25 +69,51 @@ cd HyperNavBar
 ./gradlew assembleDebug
 
 # APK 输出位置
-# app/build/outputs/apk/debug/app-debug.apk
+# app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
 ```
 
-## 下载
+<br>
 
-前往 [Releases](https://github.com/ianzb/HyperNavBar/releases) 下载最新 APK。
+# 如何贡献
 
-## 第三方库
+[![tg_badge]][tg_url]
+
+### 相关信息
+
+[点击此处](docs/rule.md) 查看规则编写说明  
+[点击此处](https://github.com/Ianzb/HyperNavBarRules) 查看规则仓库  
+[前往 Telegram 群组](https://t.me/HyperNavBar) 与其他贡献者交流
+
+### 遇到问题？
+
+前往 [Issue](https://github.com/Ianzb/HyperNavBar/issues) 或 [Telegram 群组](https://t.me/HyperNavBar) 反馈。
+
+### 参与贡献
+
+- [提交 Pull Request](https://github.com/Ianzb/HyperNavBar/pulls) 贡献代码
+- [规则仓库](https://github.com/Ianzb/HyperNavBarRules) 贡献适配规则
+- 查看 [规则文档](docs/rule.md) 了解规则编写说明
+
+<br>
+
+# 第三方库
 
 - [Miuix](https://github.com/YuKongA/Miuix) — HyperOS 风格 Compose UI 组件库
 - [AndroidX Compose](https://developer.android.com/jetpack/compose) — 声明式 UI 框架
 - [AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass) — 液态玻璃导航栏效果参考
 - [Kotlin Coroutines](https://github.com/Kotlin/kotlinx.coroutines) — 异步支持
 
-## 许可证
+<br>
+
+# 许可证
 
 本项目基于 [Apache License 2.0](LICENSE) 开源。
 
-## 致谢
+<br>
 
-- `cmd miui_navigation_bar_immersive` 逆向工程参考
-- 小米 HyperOS 社区
+# Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Ianzb/HyperNavBar&type=Date)](https://www.star-history.com/#Ianzb/HyperNavBar&Date)
+
+[tg_badge]: https://img.shields.io/badge/TG-群组-4991D3?logo=telegram
+[tg_url]: https://t.me/HyperNavBar
