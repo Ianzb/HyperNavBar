@@ -36,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -59,10 +60,11 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -136,6 +138,7 @@ fun RulesPageView(
     var intervalInput by remember { mutableStateOf("0") }
     var showPresetSheet by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
+    var showJsonEditor by remember { mutableStateOf(false) }
 
     val backdrop = rememberBlurBackdrop()
     val blurActive = backdrop != null
@@ -326,7 +329,7 @@ fun RulesPageView(
                     }
 
                     RuleType.LOCAL -> {
-                        val jsonContent = jsonInput.trim()
+                        val jsonContent = formatNbiJson(jsonInput.trim())
                         if (jsonContent.isEmpty()) {
                             return@launch
                         }
@@ -353,6 +356,7 @@ fun RulesPageView(
                                     )
                                     reloadConfigs()
                                     withContext(Dispatchers.Main) {
+                                        jsonInput = jsonContent
                                         resetAddState()
                                     }
                                 },
@@ -382,9 +386,10 @@ fun RulesPageView(
             try {
                 val dialog = editingConfig ?: return@launch
 
+                val formattedJson = if (dialog.type == RuleType.LOCAL) formatNbiJson(jsonInput.trim()) else jsonInput.trim()
                 val updated = dialog.copy(
                     url = urlInput.trim().ifEmpty { dialog.url },
-                    jsonContent = jsonInput.trim().ifEmpty { dialog.jsonContent },
+                    jsonContent = formattedJson.ifEmpty { dialog.jsonContent },
                     note = noteInput.trim(),
                     refreshIntervalMs = (intervalInput.toIntOrNull() ?: 0) * 60_000L,
                 )
@@ -397,6 +402,9 @@ fun RulesPageView(
                     val idx = configs.indexOfFirst { it.id == updated.id }
                     if (idx >= 0) {
                         configs[idx] = updated
+                    }
+                    if (dialog.type == RuleType.LOCAL) {
+                        jsonInput = formattedJson
                     }
                     resetEditState()
                 }
@@ -469,6 +477,21 @@ fun RulesPageView(
                 }
             } catch (_: Exception) {
                 Toast.makeText(context, "File read failed", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val jsonFileSaver = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let {
+            try {
+                context.contentResolver.openOutputStream(it)?.use { output ->
+                    output.write(formatNbiJson(jsonInput).toByteArray())
+                }
+                Toast.makeText(context, "导出成功", Toast.LENGTH_SHORT).show()
+            } catch (_: Exception) {
+                Toast.makeText(context, "导出失败", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -588,10 +611,7 @@ fun RulesPageView(
                     enabled = !isSaving
                 ) {
                     if (isSaving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 4.dp
-                        )
+                        InfiniteProgressIndicator()
                     } else {
                         Icon(MiuixIcons.Ok, "确定")
                     }
@@ -612,6 +632,20 @@ fun RulesPageView(
                 jsonFilePicker = jsonFilePicker,
                 showInterval = true,
                 enabled = !isSaving,
+                onOpenEditor = { showJsonEditor = true },
+                onExport = {
+                    val name = try { JSONObject(jsonInput.trim()).optString("name", "nbi_rules") } catch (_: Exception) { "nbi_rules" }
+                    jsonFileSaver.launch("${name}.json")
+                },
+                onExportCloud = {
+                    scope.launch {
+                        val results = fetchAndParseConfigs()
+                        val merged = RuleCombiner.combine(configs, results)
+                        jsonInput = merged.toString(4)
+                        val name = try { merged.optString("name", "nbi_rules") } catch (_: Exception) { "nbi_rules" }
+                        jsonFileSaver.launch("${name}.json")
+                    }
+                },
             )
         }
 
@@ -631,10 +665,7 @@ fun RulesPageView(
                     enabled = !isSaving
                 ) {
                     if (isSaving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 4.dp
-                        )
+                        InfiniteProgressIndicator()
                     } else {
                         Icon(MiuixIcons.Ok, "确定")
                     }
@@ -656,7 +687,22 @@ fun RulesPageView(
                     onIntervalChange = { v -> intervalInput = v.filter(Char::isDigit) },
                     jsonFilePicker = jsonFilePicker,
                     showInterval = cfg.type == RuleType.CLOUD,
+                    showTypeSelector = false,
                     enabled = !isSaving,
+                    onOpenEditor = { showJsonEditor = true },
+                    onExport = {
+                        val name = try { JSONObject(jsonInput.trim()).optString("name", "nbi_rules") } catch (_: Exception) { "nbi_rules" }
+                        jsonFileSaver.launch("${name}.json")
+                    },
+                    onExportCloud = {
+                        scope.launch {
+                            val results = fetchAndParseConfigs()
+                            val merged = RuleCombiner.combine(configs, results)
+                            jsonInput = merged.toString(4)
+                            val name = try { merged.optString("name", "nbi_rules") } catch (_: Exception) { "nbi_rules" }
+                            jsonFileSaver.launch("${name}.json")
+                        }
+                    },
                 )
             }
         }
@@ -688,30 +734,37 @@ fun RulesPageView(
             endAction = {
                 val cfg = actionsTarget
                 if (cfg?.type == RuleType.CLOUD) {
-                    IconButton(onClick = {
-                        scope.launch {
-                            updatingIds = updatingIds + cfg.id
-                            RuleFetcher.fetch(cfg).fold(
-                                onSuccess = { result ->
-                                    RulesManager.updateRefreshTime(context, cfg.id, System.currentTimeMillis(), result.appCount, result.configName, result.rawJson)
-                                    reloadConfigs()
-                                    actionsTarget = actionsTarget?.copy(
-                                        lastRefreshTime = System.currentTimeMillis(),
-                                        appCount = result.appCount,
-                                        name = result.configName,
-                                        cachedContent = result.rawJson,
-                                    )
-                                },
-                                onFailure = { }
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                updatingIds = updatingIds + cfg.id
+                                RuleFetcher.fetch(cfg).fold(
+                                    onSuccess = { result ->
+                                        RulesManager.updateRefreshTime(context, cfg.id, System.currentTimeMillis(), result.appCount, result.configName, result.rawJson)
+                                        reloadConfigs()
+                                        actionsTarget = actionsTarget?.copy(
+                                            lastRefreshTime = System.currentTimeMillis(),
+                                            appCount = result.appCount,
+                                            name = result.configName,
+                                            cachedContent = result.rawJson,
+                                        )
+                                    },
+                                    onFailure = { }
+                                )
+                                updatingIds = updatingIds - cfg.id
+                            }
+                        },
+                        enabled = cfg.id !in updatingIds,
+                    ) {
+                        if (cfg.id in updatingIds) {
+                            InfiniteProgressIndicator()
+                        } else {
+                            Icon(
+                                imageVector = MiuixIcons.Refresh,
+                                contentDescription = stringResource(R.string.rules_refresh_manual),
+                                tint = MiuixTheme.colorScheme.onBackground,
                             )
-                            updatingIds = updatingIds - cfg.id
                         }
-                    }) {
-                        Icon(
-                            imageVector = MiuixIcons.Refresh,
-                            contentDescription = if (cfg.id in updatingIds) stringResource(R.string.rules_refreshing) else stringResource(R.string.rules_refresh_manual),
-                            tint = MiuixTheme.colorScheme.onBackground,
-                        )
                     }
                 }
             },
@@ -739,6 +792,14 @@ fun RulesPageView(
             }
         }
 
+        // Visual JSON rule editor sheet
+        JsonRuleEditorSheet(
+            show = showJsonEditor,
+            jsonInput = jsonInput,
+            onJsonChange = { jsonInput = it },
+            onDismiss = { showJsonEditor = false },
+        )
+
         // Main content
         Box(modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier) {
             LazyColumn(
@@ -752,11 +813,24 @@ fun RulesPageView(
                 item {
                     SmallTitle(text = stringResource(R.string.rules_apply), modifier = Modifier.padding(top = 6.dp))
                     Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 6.dp)) {
-                        ArrowPreference(
+                        BasicComponent(
                             title = stringResource(R.string.rules_apply_now),
                             summary = stringResource(R.string.rules_merged_count, mergedAppCount) +
                                 " · " + if (isApplying) stringResource(R.string.rules_refreshing) else formatElapsedTime(lastApplyTime, tick),
                             onClick = if (isApplying) null else ({ applyRules() }),
+                            endActions = {
+                                Box(modifier = Modifier.size(32.dp).padding(end = 8.dp), contentAlignment = Alignment.Center) {
+                                    if (isApplying) {
+                                        InfiniteProgressIndicator()
+                                    } else {
+                                        Icon(
+                                            imageVector = MiuixIcons.Refresh,
+                                            contentDescription = stringResource(R.string.rules_apply_now),
+                                            tint = MiuixTheme.colorScheme.onBackground,
+                                        )
+                                    }
+                                }
+                            },
                         )
                     }
                 }
@@ -785,7 +859,7 @@ fun RulesPageView(
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             BasicComponent(
                                 title = config.name.ifEmpty { config.url.ifEmpty { "本地规则" } },
@@ -834,30 +908,36 @@ private fun SubscriptionForm(
     onIntervalChange: (String) -> Unit,
     jsonFilePicker: androidx.activity.result.ActivityResultLauncher<String>,
     showInterval: Boolean,
+    showTypeSelector: Boolean = true,
     enabled: Boolean = true,
+    onOpenEditor: () -> Unit = {},
+    onExport: () -> Unit = {},
+    onExportCloud: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxWidth().scrollEndHaptic().overScrollVertical(),
     ) {
-        item {
-            Row(
-                modifier = Modifier.padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                TextButton(
-                    text = "云端",
-                    onClick = { onRuleTypeChange(RuleType.CLOUD) },
-                    modifier = Modifier.weight(1f),
-                    colors = if (ruleType == RuleType.CLOUD) ButtonDefaults.textButtonColorsPrimary() else ButtonDefaults.textButtonColors(),
-                    enabled = enabled,
-                )
-                TextButton(
-                    text = "本地",
-                    onClick = { onRuleTypeChange(RuleType.LOCAL) },
-                    modifier = Modifier.weight(1f),
-                    colors = if (ruleType == RuleType.LOCAL) ButtonDefaults.textButtonColorsPrimary() else ButtonDefaults.textButtonColors(),
-                    enabled = enabled,
-                )
+        if (showTypeSelector) {
+            item {
+                Row(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    TextButton(
+                        text = "云端",
+                        onClick = { onRuleTypeChange(RuleType.CLOUD) },
+                        modifier = Modifier.weight(1f),
+                        colors = if (ruleType == RuleType.CLOUD) ButtonDefaults.textButtonColorsPrimary() else ButtonDefaults.textButtonColors(),
+                        enabled = enabled,
+                    )
+                    TextButton(
+                        text = "本地",
+                        onClick = { onRuleTypeChange(RuleType.LOCAL) },
+                        modifier = Modifier.weight(1f),
+                        colors = if (ruleType == RuleType.LOCAL) ButtonDefaults.textButtonColorsPrimary() else ButtonDefaults.textButtonColors(),
+                        enabled = enabled,
+                    )
+                }
             }
         }
         item {
@@ -870,6 +950,12 @@ private fun SubscriptionForm(
                     singleLine = true,
                     enabled = enabled,
                 )
+                TextButton(
+                    text = "导出到文件",
+                    onClick = onExportCloud,
+                    enabled = enabled,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                )
             } else {
                 TextField(
                     modifier = Modifier.padding(vertical = 4.dp).height(180.dp),
@@ -879,11 +965,35 @@ private fun SubscriptionForm(
                     singleLine = false,
                     enabled = enabled,
                 )
-                TextButton(
-                    text = "从文件导入",
-                    onClick = { jsonFilePicker.launch("application/json") },
-                    enabled = enabled,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    TextButton(
+                        text = "可视化编辑",
+                        onClick = onOpenEditor,
+                        enabled = enabled,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.textButtonColorsPrimary(),
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    TextButton(
+                        text = "从文件导入",
+                        onClick = { jsonFilePicker.launch("application/json") },
+                        enabled = enabled,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(
+                        text = "导出到文件",
+                        onClick = onExport,
+                        enabled = enabled,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
         item {
