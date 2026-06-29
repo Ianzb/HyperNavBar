@@ -79,6 +79,7 @@ jobs:
 
       - name: 构建 Release APK (arm64-v8a)
         run: |
+          chmod +x gradlew
           ./gradlew assembleRelease
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
