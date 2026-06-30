@@ -92,7 +92,7 @@
     <string name="export_failed">导出失败</string>
     <string name="about">关于</string>
     <string name="about_source_code">项目地址</string>
-    <string name="about_source_code_summary">https://github.com/Ianzb/HyperNavBar</string>
+    <string name="about_source_code_summary">https://github.com/HyperNavBar/HyperNavBar</string>
     <string name="about_telegram">Telegram 群组</string>
     <string name="about_telegram_summary">https://t.me/HyperNavBar</string>
     <string name="about_dependencies">第三方许可证</string>

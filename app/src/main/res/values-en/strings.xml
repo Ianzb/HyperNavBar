@@ -92,7 +92,7 @@
     <string name="export_failed">Export failed</string>
     <string name="about">More</string>
     <string name="about_source_code">Source Code</string>
-    <string name="about_source_code_summary">https://github.com/Ianzb/HyperNavBar</string>
+    <string name="about_source_code_summary">https://github.com/HyperNavBar/HyperNavBar</string>
     <string name="about_telegram">Telegram Group</string>
     <string name="about_telegram_summary">https://t.me/HyperNavBar</string>
     <string name="about_dependencies">Third Party Licenses</string>

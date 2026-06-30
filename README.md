@@ -4,17 +4,17 @@
 
 ### 小米 HyperOS 小白条沉浸规则管理工具
 
-[规则文档](docs/rule.md) | [更新日志](changelog.md) | [规则仓库](https://github.com/Ianzb/HyperNavBarRules) | [Telegram 群组](https://t.me/HyperNavBar)
+[规则文档](docs/rule.md) | [更新日志](changelog.md) | [规则仓库](https://github.com/HyperNavBar/HyperNavBarRules) | [Telegram 群组](https://t.me/HyperNavBar)
 
-[![GitHub License](https://img.shields.io/github/license/Ianzb/HyperNavBar)](LICENSE)
-[![GitHub Issues](https://img.shields.io/github/issues/Ianzb/HyperNavBar)](https://github.com/Ianzb/HyperNavBar/issues)
-[![GitHub PRs](https://img.shields.io/github/issues-pr/Ianzb/HyperNavBar)](https://github.com/Ianzb/HyperNavBar/pulls)
+[![GitHub License](https://img.shields.io/github/license/HyperNavBar/HyperNavBar)](LICENSE)
+[![GitHub Issues](https://img.shields.io/github/issues/HyperNavBar/HyperNavBar)](https://github.com/HyperNavBar/HyperNavBar/issues)
+[![GitHub PRs](https://img.shields.io/github/issues-pr/HyperNavBar/HyperNavBar)](https://github.com/HyperNavBar/HyperNavBar/pulls)
 
 </div>
 
 **HyperNavBar** 是一款小米 HyperOS 导航栏沉浸规则管理应用，通过 Root 权限自定义应用的小白条行为。
 
-规则数据由 [HyperNavBar Rules](https://github.com/Ianzb/HyperNavBarRules) 仓库维护，欢迎前往贡献。
+规则数据由 [HyperNavBar Rules](https://github.com/HyperNavBar/HyperNavBarRules) 仓库维护，欢迎前往贡献。
 
 <br>
 
@@ -51,7 +51,7 @@
 
 # 下载
 
-前往 [Releases](https://github.com/Ianzb/HyperNavBar/releases) 下载最新 APK。
+前往 [Releases](https://github.com/HyperNavBar/HyperNavBar/releases) 下载最新 APK。
 
 <br>
 
@@ -59,7 +59,7 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/ianzb/HyperNavBar.git
+git clone https://github.com/HyperNavBar/HyperNavBar.git
 cd HyperNavBar
 
 # 设置 JDK 17+ 和 Android SDK
@@ -82,17 +82,17 @@ cd HyperNavBar
 
 [点击此处](docs/rule.md) 查看规则编写说明  
 [点击此处](changelog.md) 查看更新日志  
-[点击此处](https://github.com/Ianzb/HyperNavBarRules) 查看规则仓库  
+[点击此处](https://github.com/HyperNavBar/HyperNavBarRules) 查看规则仓库  
 [前往 Telegram 群组](https://t.me/HyperNavBar) 与其他贡献者交流
 
 ### 遇到问题？
 
-前往 [Issue](https://github.com/Ianzb/HyperNavBar/issues) 或 [Telegram 群组](https://t.me/HyperNavBar) 反馈。
+前往 [Issue](https://github.com/HyperNavBar/HyperNavBar/issues) 或 [Telegram 群组](https://t.me/HyperNavBar) 反馈。
 
 ### 参与贡献
 
-- [提交 Pull Request](https://github.com/Ianzb/HyperNavBar/pulls) 贡献代码
-- [规则仓库](https://github.com/Ianzb/HyperNavBarRules) 贡献适配规则
+- [提交 Pull Request](https://github.com/HyperNavBar/HyperNavBar/pulls) 贡献代码
+- [规则仓库](https://github.com/HyperNavBar/HyperNavBarRules) 贡献适配规则
 - 查看 [规则文档](docs/rule.md) 了解规则编写说明
 
 <br>
@@ -114,7 +114,7 @@ cd HyperNavBar
 
 # Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Ianzb/HyperNavBar&type=Date)](https://www.star-history.com/#Ianzb/HyperNavBar&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=HyperNavBar/HyperNavBar&type=Date)](https://www.star-history.com/#HyperNavBar/HyperNavBar&Date)
 
 [tg_badge]: https://img.shields.io/badge/TG-群组-4991D3?logo=telegram
 [tg_url]: https://t.me/HyperNavBar

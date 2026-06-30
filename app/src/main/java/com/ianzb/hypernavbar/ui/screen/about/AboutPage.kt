@@ -337,7 +337,7 @@ private fun AboutContent(
                         ArrowPreference(
                             title = stringResource(R.string.about_source_code),
                             summary = stringResource(R.string.about_source_code_summary),
-                            onClick = { uriHandler.openUri("https://github.com/Ianzb/HyperNavBar") },
+                            onClick = { uriHandler.openUri("https://github.com/HyperNavBar/HyperNavBar") },
                         )
                         ArrowPreference(
                             title = stringResource(R.string.about_telegram),
