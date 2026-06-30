@@ -46,8 +46,21 @@ object RootHelper {
     fun enableAccessibilityService(context: Context): Boolean {
         return try {
             val componentName = "${context.packageName}/.AppIdentifyAccessibilityService"
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "settings put secure enabled_accessibility_services $componentName"))
-            process.waitFor() == 0
+            // 先读取已有的无障碍服务列表，避免覆盖其他应用的权限
+            val readProcess = Runtime.getRuntime().exec(arrayOf("su", "-c", "settings get secure enabled_accessibility_services"))
+            val existing = BufferedReader(InputStreamReader(readProcess.inputStream)).use { it.readText().trim() }
+            readProcess.waitFor()
+
+            val currentList = if (existing.isNotEmpty() && existing != "null") existing else ""
+            val merged = if (currentList.split(":").contains(componentName)) {
+                currentList  // 已包含，无需重复添加
+            } else if (currentList.isEmpty()) {
+                componentName
+            } else {
+                "$currentList:$componentName"
+            }
+            val writeProcess = Runtime.getRuntime().exec(arrayOf("su", "-c", "settings put secure enabled_accessibility_services $merged"))
+            writeProcess.waitFor() == 0
         } catch (_: Exception) {
             false
         }
